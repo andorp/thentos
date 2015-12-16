@@ -52,17 +52,23 @@ import Thentos.Util
 enterAction :: forall s e. (Show e, Typeable e) =>
     s -> ActionState ->
     (ActionError e -> IO ServantErr) ->
-    Maybe ThentosSessionToken -> Action e s :~> ExceptT ServantErr IO
-enterAction polyState actionState toServantErr mTok = Nat $ ExceptT . run toServantErr
+    ThentosAuthCredentials -> Action e s :~> ExceptT ServantErr IO
+enterAction polyState actionState toServantErr creds = Nat $ ExceptT . run toServantErr
   where
     run :: (Show e, Typeable e)
         => (ActionError e -> IO ServantErr)
         -> Action e s a -> IO (Either ServantErr a)
-    run e = (>>= fmapLM e . fst) . runActionE polyState actionState . (updatePrivs mTok >>)
+    run e = (>>= fmapLM e . fst) . runActionE polyState actionState . (updatePrivs creds >>)
 
-    updatePrivs :: Maybe ThentosSessionToken -> Action e s ()
-    updatePrivs (Just tok) = accessRightsByThentosSession'P tok >>= grantAccessRights'P
-    updatePrivs Nothing    = return ()
+    updatePrivs :: ThentosAuthCredentials -> Action e s ()
+    updatePrivs (ThentosAuthCredentials mTok origin) = f mTok >> g origin
+      where
+        f (Just tok) = accessRightsByThentosSession'P tok >>= grantAccessRights'P
+        f Nothing    = return ()
+
+        g "127.0.0.1" = grantAccessRights'P [PrivilegedIP]
+        g _ = return ()
+        -- FUTURE WORK: instead of just localhost, make privileged IP addresses configurable.
 
 
 -- * error handling

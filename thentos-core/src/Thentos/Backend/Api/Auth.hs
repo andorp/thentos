@@ -42,10 +42,18 @@ import Thentos.Types
 
 data ThentosAuth
 
+data ThentosAuthCredentials =
+    ThentosAuthCredentials
+        { thentosAuthSessionToken :: Maybe ThentosSessionToken
+        , thentosAuthOrigin       :: IPAddress
+        }
+
 instance HasServer sub => HasServer (ThentosAuth :> sub) where
-  type ServerT (ThentosAuth :> sub) m = Maybe ThentosSessionToken -> ServerT sub m
-  route Proxy sub = WithRequest $ \ request -> route (Proxy :: Proxy sub)
-      (passToServer sub $ lookupThentosHeaderSession renderThentosHeaderName request)
+  type ServerT (ThentosAuth :> sub) m = ThentosAuthCredentials -> ServerT sub m
+  route Proxy sub = WithRequest $ \ request -> do
+      let mTok = lookupThentosHeaderSession renderThentosHeaderName request
+      origin :: IPAddress <- _ $ request
+      route (Proxy :: Proxy sub) . passToServer sub $ ThentosAuthCredentials mTok origin
 
 instance HasLink sub => HasLink (ThentosAuth :> sub) where
     type MkLink (ThentosAuth :> sub) = MkLink sub

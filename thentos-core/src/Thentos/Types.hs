@@ -52,6 +52,7 @@ module Thentos.Types
 
     , Agent(..)
     , Role(..)
+    , PrivilegedIP(..)
 
     , RelRef(..)
     , Uri(..), parseUri, renderUri
@@ -581,6 +582,11 @@ instance FromField Role where
         case readMay s of
             Just r  -> return r
             Nothing -> returnError ConversionFailed f ""
+
+data PrivilegedIP = PrivilegedIP
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Generic)
+
+instance ToCNF PrivilegedIP where toCNF = toCNF . show
 
 
 -- * uri
